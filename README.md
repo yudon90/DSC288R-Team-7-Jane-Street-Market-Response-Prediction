@@ -1,5 +1,5 @@
-# DSC288R-Team-7-Jane-Street-Market-Response-Prediction
-Jane Street Real-Time Market Data Forecasting
+# DSC288R Team 7: Jane Street Real-Time Market Data Forecasting
+
 Team 7 - Mahir Oza, Christopher Spears, Donald Yu, Xiaolong Yu
  
 Project Overview
