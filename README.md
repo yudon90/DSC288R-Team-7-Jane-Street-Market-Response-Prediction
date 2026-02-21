@@ -50,6 +50,7 @@ When compared to existing literature, the results are highly favorable. Lin's ra
 
 --------
 Key Findings and Scaling Analysis
+
 Our analysis uncovered several critical insights regarding the Jane Street market data and how predictive models behave within it.
 
 Lag features dominate the signal: The feature responder_6_lag_1 alone has a 0.89 correlation with the target variable. This far exceeds any raw feature, which maxed out at a 0.09 correlation. This proves that the predictive signal is highly temporal rather than cross sectional.
