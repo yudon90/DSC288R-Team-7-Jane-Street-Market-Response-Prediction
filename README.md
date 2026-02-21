@@ -31,8 +31,11 @@ Our evaluation on a dataset of four million rows demonstrates significant improv
 
 Model,RMSE,R-squared
 Trivial (predict mean),0.7689,0.0000
+
 Ridge Regression,0.3031,0.8446
+
 XGBoost (default),0.2987,0.8491
+
 XGBoost (tuned),0.2971,0.8507
 
 The tuned XGBoost model is our best performing algorithm, achieving a 61 percent RMSE reduction compared to the trivial baseline. An R-squared of 0.85 indicates that the model successfully explains 85 percent of the variance in market returns. Furthermore, the tuned XGBoost model improved upon the Ridge Regression baseline by 2 percent, which confirms that nonlinear patterns exist within the data. To prevent overfitting during training, early stopping was implemented and triggered at iteration 802 out of 2000.
