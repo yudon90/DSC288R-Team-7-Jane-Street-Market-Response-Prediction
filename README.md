@@ -42,5 +42,7 @@ Key Findings and Scaling Analysis
 Our analysis uncovered several critical insights regarding the Jane Street market data and how predictive models behave within it.
 
 Lag features dominate the signal: The feature responder_6_lag_1 alone has a 0.89 correlation with the target variable. This far exceeds any raw feature, which maxed out at a 0.09 correlation. This proves that the predictive signal is highly temporal rather than cross sectional.
+
 Performance varies with dataset size: Training on 2.5 million rows resulted in an RMSE of 0.3376. Training on 3 million rows improved the RMSE to 0.2797. Expanding to 4 million rows shifted the RMSE to 0.2971. This fluctuation indicates that different dataset sizes capture different market regimes during the test period, highlighting a well documented challenge in financial machine learning known as regime changes.
+
 Nonlinear models outperform linear models: XGBoost beat Ridge Regression by approximately 2 percent in RMSE. This confirms the presence of nonlinear feature interactions. However, the vast majority of the predictive signal still originates from robust feature engineering rather than the choice of algorithm.
