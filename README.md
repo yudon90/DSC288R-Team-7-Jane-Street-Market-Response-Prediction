@@ -2,7 +2,7 @@
 Jane Street Real-Time Market Data Forecasting
 
 Project Overview
-This project focuses on developing a predictive model to forecast market responses using real-time financial data. The goal is to identify trading opportunities by predicting the "action" (whether to trade or not) based on anonymized market features. This repository contains the source code, data processing pipelines, and experimental notebooks for the DSC 288 Graduate Capstone Project.
+This project focuses on developing a predictive model to forecast market responses using real-time financial data. The goal is to identify trading opportunities by predicting the "action" (whether to trade or not) based on anonymized market features. This repository contains the source code, data processing pipelines, and experimental notebooks for the project.
 
 --------
 Data Sources
