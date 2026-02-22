@@ -1,0 +1,12 @@
+Dataset Retrieval Instructions
+
+Due to GitHub's file size limits, the 12.3 GB Jane Street dataset is not hosted in this repository.
+
+To run the notebooks in this project:
+
+-Download the data from Kaggle: Jane Street Market Data: https://www.kaggle.com/competitions/jane-street-real-time-market-data-forecasting/data
+
+-Alternatively, use the Kaggle API: kaggle competitions download -c jane-street-real-time-market-data-forecasting
+
+-Unzip the downloaded files and place train.csv and features.csv into the data/raw/ directory.
+
