@@ -1,8 +1,8 @@
 # Jane Street Real-Time Market Prediction
 
-**Group 7 — DSC 288R Winter 2026, UCSD**
+**Group 7 — DSC 288R Winter 2026
 
-Xiaolong Yu, Christopher Spears, Donald Yu, Mahir Oza
+Christopher Spears, Donald Yu, Mahir Oza, Xiaolong Yu
 
 ---
 
