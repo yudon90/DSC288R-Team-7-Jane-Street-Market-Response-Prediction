@@ -1,1 +1,15 @@
-
+data/raw/
+data/processed/
+data/final/
+*.parquet
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+venv/
+env/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
