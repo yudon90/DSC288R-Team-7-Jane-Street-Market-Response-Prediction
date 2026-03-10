@@ -4,7 +4,7 @@ Team 7 - Mahir Oza, Christopher Spears, Donald Yu, Xiaolong Yu
  
 Project Overview
 
-This project focuses on developing a predictive model to forecast market responses using real-time financial data. The goal is to identify trading opportunities by predicting the "action" (whether to trade or not) based on anonymized market features. This repository contains the source code, data processing pipelines, and experimental notebooks for the project.
+Predicting short-term market responses in noisy financial environments is a challenging yet critical task for optimizing trading decisions. In this project, we formulate real-time market prediction as a continuous regression problem. The goal is to predict continuous returns (specifically responder_6), which is distinctly more valuable than binary classification as it informs quantitative models of both the direction and the magnitude of the market response. This repository contains the source code, data processing pipelines, and experimental models for the project.
 
 --------
 Data Sources
@@ -25,36 +25,42 @@ The foundation of this research is the Jane Street Real-Time Market Data, a 12.3
 --------
 Methodology and Implementation
 
-The project is implemented using a structured, module-based approach to ensure the code is both self-describing and understandable for future collaboration. The workflow begins in the notebooks/ directory with 1_data_exploration.ipynb, where we analyze feature correlations, handle missing values, and visualize the target "resp" values that drive the trading action. Core logic for data transformation and signal processing is moved into the src/ folder to maintain a clean environment for model training. The final models are stored in the models/ directory, allowing for versioned checkpoints and easy comparison of different architectures as we iterate toward a production-ready trading strategy.
+Our approach focuses heavily on capturing temporal structures to supplement the existing high-dimensional, anonymized market data.
+
+Feature Engineering: We constructed specific lag and rolling window features directly, rather than relying solely on raw anonymized data. This includes lagged responders (e.g., responder_6_lag_1) and rolling window statistics for the top correlated market features.
+
+Data Splitting: The data is split temporally into training (70%), validation (15%), and test (15%) sets. We split by date rather than randomly because our exploratory data analysis showed strong autocorrelation between nearby trades; random splitting would leak future information into the training set.
+
+Modeling Pipeline: We evaluated six models of increasing complexity: a Trivial Baseline, Ridge Regression, Random Forest, XGBoost (Default and Tuned), and a Stacking Ensemble.
 
 --------
 Results and Model Performance
 
 Our evaluation on a dataset of four million rows demonstrates significant improvements over our baseline models. To evaluate success, we compared multiple algorithms using Root Mean Square Error (RMSE) and R-squared metrics.
 
-Model: RMSE, R-squared
+Trivial (predict mean): Test RMSE: 0.7689 | Test R^2: -0.000 
 
-Trivial (predict mean): 0.7689,0.0000
+Ridge Regression: Test RMSE: 0.3031 | Test R^2: 0.8446 
 
-Random Forest: 0.2999, 0.8478
+Random Forest: Test RMSE: 0.3020 | Test R^2: 0.8457 
 
-Ridge Regression: 0.3031,0.8446
+XGBoost (Default): Test RMSE: 0.2987 | Test R^2: 0.8491 
 
-XGBoost (default: ,0.2987,0.8491
+XGBoost (Tuned): Test RMSE: 0.2971 | Test R^2: 0.8507 
 
-XGBoost (tuned): 0.2971,0.8507
+Stacking Ensemble: Test RMSE: 0.2964 | Test R^2: 0.8514 
 
-The tuned XGBoost model is our best performing algorithm, achieving a 61 percent RMSE reduction compared to the trivial baseline. An R-squared of 0.85 indicates that the model successfully explains 85 percent of the variance in market returns. Furthermore, the tuned XGBoost model improved upon the Ridge Regression baseline by 2 percent, which confirms that nonlinear patterns exist within the data. To prevent overfitting during training, early stopping was implemented and triggered at iteration 802 out of 2000.
-
-When compared to existing literature, the results are highly favorable. Lin's raw feature linear model achieved an R-squared of 0.004. Our pipeline achieved an R-squared of 0.85, representing a 200x improvement. This massive gain is driven primarily by our lag feature engineering rather than model complexity alone.
+Every trained model beat the trivial baseline by over 60% in RMSE. The Stacking Ensemble achieved the best overall result with a 61.5% improvement over the baseline. Our Tuned XGBoost model, which utilized early stopping triggered at iteration 802 out of 2000, was the best single model. When compared to existing literature, where a published baseline using raw features yielded a public leaderboard R^2 of just 0.004 , our methodology demonstrates that explicit temporal feature engineering is required to extract predictive signals.
 
 --------
 Key Findings and Scaling Analysis
 
-Our analysis uncovered several critical insights regarding the Jane Street market data and how predictive models behave within it.
+Our analysis uncovered several critical insights regarding high-frequency market data:
 
-Lag features dominate the signal: The feature responder_6_lag_1 alone has a 0.89 correlation with the target variable. This far exceeds any raw feature, which maxed out at a 0.09 correlation. This proves that the predictive signal is highly temporal rather than cross sectional.
+Lag features dominate the signal: The engineered feature responder_6_lag_1 has a 0.89 correlation with the target. Lag features alone (just 2 features) achieved an R^2 of 0.8465, confirming that the predictive signal relies far more on temporal autocorrelation than on individual raw features.
 
-Performance varies with dataset size: Training on 2.5 million rows resulted in an RMSE of 0.3376. Training on 3 million rows improved the RMSE to 0.2797. Expanding to 4 million rows shifted the RMSE to 0.2971. This fluctuation indicates that different dataset sizes capture different market regimes during the test period, highlighting a well documented challenge in financial machine learning known as regime changes.
+Nonlinear models outperform linear models: Tree models split data at decision points, finding patterns that linear models miss. Ridge Regression had the weakest performance among our trained models because it cannot model non-linear interactions between features.
 
-Nonlinear models outperform linear models: XGBoost beat Ridge Regression by approximately 2 percent in RMSE. This confirms the presence of nonlinear feature interactions. However, the vast majority of the predictive signal still originates from robust feature engineering rather than the choice of algorithm.
+Diminishing returns: The performance gap between models shrinks as complexity grows, suggesting we are near the signal ceiling for this specific feature set.
+
+Live-Market Risks: There is a prevalent risk in live prediction settings that by the time the data and model are available to make predictions, the inherent latency means subsequent trades may have already occurred. Additionally, model drift can be exploited by market volatility across different trading phases.
