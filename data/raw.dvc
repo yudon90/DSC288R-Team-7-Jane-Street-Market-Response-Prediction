@@ -1,0 +1,3 @@
+outs:
+  - path: raw
+    desc: Jane Street dataset from Kaggle (47M rows). Download via kagglehub.
