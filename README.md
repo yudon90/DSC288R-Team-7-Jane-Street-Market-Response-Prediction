@@ -111,9 +111,9 @@ project/
 
 | Feature Set | # Features | Test R^2 |
 |-------------|-----------|----------|
-| Lag only | 2 | 0.8465 |
-| Lag + Raw | 72 | 0.8500 |
-| Lag + Rolling | 8 | 0.8482 |
+| Lag only | 2 | 0.7804 |
+| Lag + Raw | 72 | 0.8270 |
+| Lag + Rolling | 8 | 0.7925 |
 | All features | 79 | 0.8507 |
 
 **Key finding:** Lag features alone (just 2 features) capture most of the predictive signal, confirming that temporal autocorrelation is the dominant signal in this dataset.
