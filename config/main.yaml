@@ -1,0 +1,14 @@
+# main.yaml — Top-level configuration
+# Group 7: DSC 288R Winter 2026
+paths:
+  raw_data: data/raw
+  processed_data: data/processed
+  final_data: data/final
+  models: models
+  notebooks: notebooks
+dataset:
+  name: jane-street-real-time-market-prediction
+  source: kaggle
+  kaggle_id: mohamedsameh0410/jane-street-dataset
+  total_rows: 47_000_000
+  target: responder_6

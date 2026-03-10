@@ -1,0 +1,9 @@
+model_name: Stacking Ensemble
+model_type: stacking
+base_models:
+  - ridge
+  - xgboost_tuned
+meta_model:
+  type: ridge
+  alpha: 1.0
+scaling: true

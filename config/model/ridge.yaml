@@ -1,0 +1,5 @@
+model_name: Ridge Regression
+model_type: ridge
+params:
+  alpha: 1.0
+scaling: true

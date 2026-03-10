@@ -1,0 +1,17 @@
+# process1.yaml — Data processing parameters
+sample_size: 4_000_000
+null_threshold: 0.5
+lag_targets:
+  - responder_6
+  - responder_7
+lag_steps: 1
+key_features:
+  - feature_46
+  - feature_22
+windows:
+  - 5
+interaction:
+  - responder_6_lag_1 * responder_7_lag_1
+train_pct: 0.70
+val_pct: 0.85
+output_dir: data/processed

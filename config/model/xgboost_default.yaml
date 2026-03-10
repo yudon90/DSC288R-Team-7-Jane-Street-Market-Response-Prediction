@@ -1,0 +1,15 @@
+model_name: XGBoost (Default)
+model_type: xgboost_default
+params:
+  n_estimators: 300
+  max_depth: 4
+  learning_rate: 0.1
+  subsample: 0.9
+  colsample_bytree: 0.9
+  reg_alpha: 0.01
+  reg_lambda: 0.5
+  tree_method: hist
+  n_jobs: -1
+  random_state: 42
+  verbosity: 0
+scaling: false
