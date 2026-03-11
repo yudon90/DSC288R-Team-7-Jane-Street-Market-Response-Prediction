@@ -1,8 +1,12 @@
 numpy
 pandas
+pyarrow
 matplotlib
 seaborn
-plotly
 statsmodels
 scikit-learn
 xgboost
+kagglehub
+joblib
+pyyaml
+pytest
