@@ -1,5 +1,6 @@
 """
 test_process.py — Unit tests for src/process.py
+
 Run: pytest tests/test_process.py -v
 """
 
@@ -15,6 +16,9 @@ from src.process import (
 )
 
 
+# ============================================================
+# FIXTURES — Small synthetic data for testing
+# ============================================================
 @pytest.fixture
 def sample_df():
     """Create a small synthetic dataset mimicking real data structure."""
@@ -22,18 +26,23 @@ def sample_df():
     n_rows = 200
     n_symbols = 4
     rows_per_symbol = n_rows // n_symbols
+
     records = []
     for sym in range(n_symbols):
         for i in range(rows_per_symbol):
             row = {
-                'date_id': i // 5, 'time_id': i % 5, 'symbol_id': sym,
+                'date_id': i // 5,   # 5 trades per date
+                'time_id': i % 5,
+                'symbol_id': sym,
                 'weight': np.random.uniform(0.5, 2.0),
                 'responder_6': np.random.normal(0, 1),
                 'responder_7': np.random.normal(0, 1),
             }
+            # Add responders 0-5 and 8 (non-target)
             for r in range(9):
                 if r not in [6, 7]:
                     row[f'responder_{r}'] = np.random.normal(0, 1)
+            # Add 10 features (simulating feature_00 to feature_09)
             for f in range(10):
                 row[f'feature_{f:02d}'] = np.random.normal(0, 1)
             records.append(row)
@@ -42,71 +51,95 @@ def sample_df():
 
 @pytest.fixture
 def sample_df_with_nulls(sample_df):
+    """Add a column with >50% nulls to test cleaning."""
     df = sample_df.copy()
     df['feature_bad'] = np.nan
-    df.loc[:10, 'feature_bad'] = 1.0
+    df.loc[:10, 'feature_bad'] = 1.0  # only 11 out of 200 rows have values
     return df
 
 
+# ============================================================
+# TESTS: clean_data()
+# ============================================================
+# Verify columns with >50% nulls are dropped
 def test_clean_data_drops_nulls(sample_df_with_nulls):
-    """Verify columns with >50% nulls are dropped."""
     cleaned = clean_data(sample_df_with_nulls)
     assert 'feature_bad' not in cleaned.columns
 
+
+# Verify non-target responders are dropped (except responder_7)
 def test_clean_data_drops_responders(sample_df):
-    """Verify non-target responders are dropped."""
     cleaned = clean_data(sample_df)
     assert 'responder_6' in cleaned.columns
     assert 'responder_7' in cleaned.columns
     assert 'responder_0' not in cleaned.columns
 
+
+# Verify no rows are lost during cleaning
 def test_clean_data_preserves_rows(sample_df):
-    """Verify no rows are lost during cleaning."""
     cleaned = clean_data(sample_df)
     assert len(cleaned) == len(sample_df)
 
+
+# ============================================================
+# TESTS: create_lag_features()
+# ============================================================
+# Verify both lag columns are created and responder_7 is dropped
 def test_lag_features_created(sample_df):
-    """Verify both lag columns are created."""
     cleaned = clean_data(sample_df)
     result = create_lag_features(cleaned)
     assert 'responder_6_lag_1' in result.columns
     assert 'responder_7_lag_1' in result.columns
     assert 'responder_7' not in result.columns
 
+
+# Verify first row per symbol is dropped (no history for lag)
 def test_lag_drops_first_row_per_symbol(sample_df):
-    """Verify first row per symbol is dropped."""
     cleaned = clean_data(sample_df)
     n_symbols = cleaned['symbol_id'].nunique()
     rows_before = len(cleaned)
     result = create_lag_features(cleaned)
     assert rows_before - len(result) == n_symbols
 
+
+# ============================================================
+# TESTS: create_rolling_features()
+# ============================================================
+# Verify rolling columns with roll_ prefix are created
 def test_rolling_features_created(sample_df):
-    """Verify rolling columns with roll_ prefix are created."""
     cleaned = clean_data(sample_df)
     result = create_lag_features(cleaned)
     result = create_rolling_features(result, key_features=['feature_00'], windows=[3])
     assert 'roll_feature_00_mean_3' in result.columns
     assert 'roll_feature_00_std_3' in result.columns
 
+
+# Verify no rows lost during rolling feature creation
 def test_rolling_no_rows_lost(sample_df):
-    """Verify no rows lost during rolling feature creation."""
     cleaned = clean_data(sample_df)
     result = create_lag_features(cleaned)
     rows_before = len(result)
     result = create_rolling_features(result, key_features=['feature_00'], windows=[3])
     assert len(result) == rows_before
 
+
+# ============================================================
+# TESTS: create_interaction_features()
+# ============================================================
+# Verify interaction = lag_6 * lag_7
 def test_interaction_feature(sample_df):
-    """Verify interaction = lag_6 * lag_7."""
     cleaned = clean_data(sample_df)
     result = create_lag_features(cleaned)
     result = create_interaction_features(result)
     expected = result['responder_6_lag_1'] * result['responder_7_lag_1']
     pd.testing.assert_series_equal(result['resp6_x_resp7'], expected, check_names=False)
 
+
+# ============================================================
+# TESTS: get_feature_groups()
+# ============================================================
+# Verify feature groups don't double-count (no overlap between groups)
 def test_feature_groups_no_overlap(sample_df):
-    """Verify feature groups don't double-count."""
     cleaned = clean_data(sample_df)
     result = create_lag_features(cleaned)
     result = create_rolling_features(result, key_features=['feature_00'], windows=[3])
@@ -116,8 +149,12 @@ def test_feature_groups_no_overlap(sample_df):
              len(groups['rolling_cols']) + len(groups['interaction_cols']))
     assert total == len(groups['all_features'])
 
+
+# ============================================================
+# TESTS: temporal_split()
+# ============================================================
+# Verify no dates appear in multiple splits
 def test_temporal_split_no_overlap(sample_df):
-    """Verify no dates appear in multiple splits."""
     cleaned = clean_data(sample_df)
     result = create_lag_features(cleaned)
     train_df, val_df, test_df = temporal_split(result)
@@ -127,16 +164,21 @@ def test_temporal_split_no_overlap(sample_df):
     assert len(train_dates & val_dates) == 0
     assert len(val_dates & test_dates) == 0
 
+
+# Verify train dates < val dates < test dates (chronological order)
 def test_temporal_split_chronological(sample_df):
-    """Verify train < val < test in date order."""
     cleaned = clean_data(sample_df)
     result = create_lag_features(cleaned)
     train_df, val_df, test_df = temporal_split(result)
     assert train_df['date_id'].max() < val_df['date_id'].min()
     assert val_df['date_id'].max() < test_df['date_id'].min()
 
+
+# ============================================================
+# TESTS: impute_features()
+# ============================================================
+# Verify no nulls remain after imputation
 def test_impute_removes_nulls(sample_df):
-    """Verify no nulls remain after imputation."""
     cleaned = clean_data(sample_df)
     result = create_lag_features(cleaned)
     result = create_rolling_features(result, key_features=['feature_00'], windows=[3])
@@ -146,8 +188,12 @@ def test_impute_removes_nulls(sample_df):
     train_df, val_df, test_df = impute_features(train_df, val_df, test_df, groups['all_features'])
     assert train_df[groups['all_features']].isnull().sum().sum() == 0
 
+
+# ============================================================
+# TESTS: prepare_arrays()
+# ============================================================
+# Verify X, y, w arrays have correct shapes
 def test_prepare_arrays_shapes(sample_df):
-    """Verify X, y, w arrays have correct shapes."""
     cleaned = clean_data(sample_df)
     result = create_lag_features(cleaned)
     result = create_rolling_features(result, key_features=['feature_00'], windows=[3])
