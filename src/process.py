@@ -20,6 +20,9 @@ import pyarrow.dataset as ds
 import kagglehub
 
 
+# ============================================================
+# DATA LOADING
+# ============================================================
 def load_data(sample_size=4_000_000):
     """Download Jane Street dataset and load a sample."""
     path = kagglehub.dataset_download("mohamedsameh0410/jane-street-dataset")
@@ -34,24 +37,27 @@ def load_data(sample_size=4_000_000):
     return df
 
 
+# ============================================================
+# DATA CLEANING
+# ============================================================
+# Clean data: drop high-null columns, drop non-target responders, sort
 def clean_data(df, null_threshold=0.5):
-    """Clean data: drop high-null columns, drop non-target responders, sort."""
     print(f"\n=== Data Cleaning Pipeline ===")
     print(f"BEFORE: {df.shape[0]:,} rows x {df.shape[1]} columns")
     original_rows = df.shape[0]
 
-    # Step 1: Drop columns with >50% nulls
+    # Drop columns with >50% nulls
     null_pct = df.isnull().mean()
     high_null_cols = null_pct[null_pct > null_threshold].index.tolist()
     df = df.drop(columns=high_null_cols)
     print(f"\nStep 1 — Dropped {len(high_null_cols)} columns (>{null_threshold*100:.0f}% null)")
 
-    # Step 2: Drop non-target responders (keep responder_7 for lag creation)
+    # Drop non-target responders (keep responder_7 for lag creation)
     other_responders = [f'responder_{i}' for i in range(9) if i not in [6, 7]]
     df = df.drop(columns=other_responders)
     print(f"Step 2 — Dropped {len(other_responders)} non-target responders")
 
-    # Step 3: Sort (required before lag/rolling features)
+    # Sort (required before lag/rolling features)
     df = df.sort_values(['symbol_id', 'date_id', 'time_id']).reset_index(drop=True)
     print(f"Step 3 — Sorted by symbol_id, date_id, time_id")
 
@@ -60,13 +66,22 @@ def clean_data(df, null_threshold=0.5):
     return df
 
 
+# ============================================================
+# FEATURE ENGINEERING
+# ============================================================
+# Create lag_1 features for responder_6 and responder_7
 def create_lag_features(df):
-    """Create lag_1 features for responder_6 and responder_7."""
     rows_before = df.shape[0]
+
+    # Lag 1 for target and cross-responder signal
     df['responder_6_lag_1'] = df.groupby('symbol_id')['responder_6'].shift(1)
     df['responder_7_lag_1'] = df.groupby('symbol_id')['responder_7'].shift(1)
+
+    # Drop raw responder_7 (only needed for lag creation)
     df = df.drop(columns=['responder_7'])
     gc.collect()
+
+    # First row per symbol has no history
     df = df.dropna(subset=['responder_6_lag_1'])
 
     lag_cols = [c for c in df.columns if '_lag_' in c]
@@ -79,26 +94,34 @@ def create_lag_features(df):
     return df
 
 
+# Rolling mean captures recent trend, rolling std captures volatility
+# roll_ prefix keeps rolling features separate from market feature columns
+# Top 2 correlated market features from EDA: feature_46, feature_22
 def create_rolling_features(df, key_features=['feature_46', 'feature_22'], windows=[5]):
-    """Create rolling mean and std with roll_ prefix to avoid overlap with market features."""
     print(f"\n=== Rolling Features ===")
+
+    # Rolling windows on top correlated market features
     for feat in key_features:
         for w in windows:
+            # Mean over last w trades per symbol (captures recent trend)
             df[f'roll_{feat}_mean_{w}'] = (
                 df.groupby('symbol_id')[feat]
                 .rolling(w, min_periods=1).mean()
                 .reset_index(level=0, drop=True)
             )
             gc.collect()
+
+            # Std over last w trades per symbol (captures recent volatility)
             df[f'roll_{feat}_std_{w}'] = (
                 df.groupby('symbol_id')[feat]
                 .rolling(w, min_periods=1).std()
                 .reset_index(level=0, drop=True)
-                .fillna(0)
+                .fillna(0)  # first row has no std, fill with 0
             )
             gc.collect()
             print(f"  {feat} window={w} done")
 
+    # Rolling on lag feature to capture recent target momentum
     for w in windows:
         df[f'roll_resp6_lag1_mean_{w}'] = (
             df.groupby('symbol_id')['responder_6_lag_1']
@@ -106,31 +129,39 @@ def create_rolling_features(df, key_features=['feature_46', 'feature_22'], windo
             .reset_index(level=0, drop=True)
         )
         gc.collect()
+
         df[f'roll_resp6_lag1_std_{w}'] = (
             df.groupby('symbol_id')['responder_6_lag_1']
             .rolling(w, min_periods=1).std()
             .reset_index(level=0, drop=True)
-            .fillna(0)
+            .fillna(0)  # first row has no std, fill with 0
         )
         gc.collect()
         print(f"  responder_6_lag_1 window={w} done")
+
     return df
 
 
+# Multiply target lag x cross-responder lag to capture joint momentum signal
 def create_interaction_features(df):
-    """Create interaction feature: lag_6 x lag_7 (joint momentum signal)."""
     df['resp6_x_resp7'] = df['responder_6_lag_1'] * df['responder_7_lag_1']
     print(f"\n=== Interaction Feature ===")
     print(f"  resp6_x_resp7 created")
     return df
 
 
+# Define feature groups with no overlapping counts
+# Each group uses different naming patterns to avoid double-counting
 def get_feature_groups(df):
-    """Define feature groups with no overlapping counts."""
+    # Market features: start with 'feature_' but exclude rolling (which start with 'roll_')
     market_cols = [c for c in df.columns if c.startswith('feature_') and 'roll' not in c]
+    # Lag features: contain '_lag_' but exclude rolling lag features
     lag_cols = [c for c in df.columns if '_lag_' in c and 'roll' not in c]
+    # Rolling features: all columns containing 'roll' (roll_ prefix)
     rolling_cols = [c for c in df.columns if 'roll' in c]
+    # Interaction: single cross-responder momentum feature
     interaction_cols = ['resp6_x_resp7']
+    # Combine all groups and remove any duplicates
     all_features = list(dict.fromkeys(market_cols + lag_cols + rolling_cols + interaction_cols))
 
     print(f"\n=== Feature Summary ===")
@@ -150,8 +181,11 @@ def get_feature_groups(df):
     }
 
 
+# ============================================================
+# TEMPORAL SPLIT
+# ============================================================
+# Split data by date: 70% train, 15% val, 15% test (not random — prevents data leakage)
 def temporal_split(df, train_pct=0.70, val_pct=0.85):
-    """Split data by date: 70% train, 15% val, 15% test."""
     total_dates = sorted(df['date_id'].unique())
     n_dates = len(total_dates)
     train_end = total_dates[int(n_dates * train_pct)]
@@ -170,8 +204,11 @@ def temporal_split(df, train_pct=0.70, val_pct=0.85):
     return train_df, val_df, test_df
 
 
+# ============================================================
+# IMPUTATION
+# ============================================================
+# Impute with training median only (no leakage from val/test)
 def impute_features(train_df, val_df, test_df, all_features):
-    """Impute missing values using training median only (prevents leakage)."""
     for col in all_features:
         med = train_df[col].median()
         if hasattr(med, 'iloc'):
@@ -187,8 +224,11 @@ def impute_features(train_df, val_df, test_df, all_features):
     return train_df, val_df, test_df
 
 
+# ============================================================
+# PREPARE FINAL ARRAYS
+# ============================================================
+# Extract X(features), y(target), w(weights) for each split
 def prepare_arrays(train_df, val_df, test_df, all_features, target_col='responder_6'):
-    """Extract X, y, w arrays from dataframes."""
     X_train, y_train = train_df[all_features], train_df[target_col]
     X_val, y_val = val_df[all_features], val_df[target_col]
     X_test, y_test = test_df[all_features], test_df[target_col]
@@ -200,8 +240,12 @@ def prepare_arrays(train_df, val_df, test_df, all_features, target_col='responde
     return (X_train, y_train, w_train, X_val, y_val, w_val, X_test, y_test, w_test)
 
 
+# ============================================================
+# MAIN PIPELINE
+# ============================================================
 def run_pipeline(config_path='config/process/process1.yaml'):
     """Run the full data processing pipeline."""
+    # Load config if available, otherwise use defaults
     config = {}
     if os.path.exists(config_path):
         with open(config_path, 'r') as f:
@@ -215,6 +259,7 @@ def run_pipeline(config_path='config/process/process1.yaml'):
     val_pct = config.get('val_pct', 0.85)
     output_dir = config.get('output_dir', 'data/processed')
 
+    # Run pipeline
     df = load_data(sample_size)
     df = clean_data(df, null_threshold)
     df = create_lag_features(df)
@@ -225,6 +270,7 @@ def run_pipeline(config_path='config/process/process1.yaml'):
     train_df, val_df, test_df = temporal_split(df, train_pct, val_pct)
     train_df, val_df, test_df = impute_features(train_df, val_df, test_df, all_features)
 
+    # Save processed data
     os.makedirs(output_dir, exist_ok=True)
     train_df.to_parquet(os.path.join(output_dir, 'train.parquet'), index=False)
     val_df.to_parquet(os.path.join(output_dir, 'val.parquet'), index=False)
