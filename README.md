@@ -1,8 +1,8 @@
 # Jane Street Real-Time Market Prediction
 
-**Group 7 — DSC 288R Winter 2026
+**Group 7 — DSC 288R Winter 2026, UCSD**
 
-Christopher Spears, Donald Yu, Mahir Oza, Xiaolong Yu
+Xiaolong Yu, Christopher Spears, Donald Yu, Mahir Oza
 
 ---
 
@@ -103,18 +103,18 @@ project/
 | Trivial (mean) | 0.7689 | -0.000 | — |
 | Ridge Regression | 0.3031 | 0.8446 | 60.6% |
 | Random Forest | 0.3020 | 0.8457 | 60.7% |
-| XGBoost (Default) | 0.2987 | 0.8491 | 61.2% |
+| XGBoost (Default) | 0.2986 | 0.8491 | 61.2% |
 | XGBoost (Tuned) | 0.2971 | 0.8507 | 61.4% |
 | Stacking Ensemble | 0.2964 | 0.8514 | 61.5% |
 
 ### Ablation Study (XGBoost Tuned)
 
-| Feature Set | # Features | Test R^2 |
-|-------------|-----------|----------|
-| Lag only | 2 | 0.7804 |
-| Lag + Raw | 72 | 0.8270 |
-| Lag + Rolling | 8 | 0.7925 |
-| All features | 79 | 0.8507 |
+| Feature Set | # Features | Test RMSE | Test R^2 |
+|-------------|-----------|-----------|----------|
+| Lag only | 2 | 0.3603 | 0.7804 |
+| Lag + Raw | 72 | 0.3198 | 0.8270 |
+| Lag + Rolling | 8 | 0.3503 | 0.7925 |
+| All features | 79 | 0.2971 | 0.8507 |
 
 **Key finding:** Lag features alone (just 2 features) capture most of the predictive signal, confirming that temporal autocorrelation is the dominant signal in this dataset.
 
@@ -184,7 +184,7 @@ Tests use small synthetic data (1000 rows) and run in seconds.
 - kagglehub
 - pyyaml
 - pytest (for testing)
-
+- joblib
 ---
 
 ## Key Findings
