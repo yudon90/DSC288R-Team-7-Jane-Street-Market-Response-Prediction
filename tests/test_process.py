@@ -3,6 +3,10 @@ test_process.py — Unit tests for src/process.py
 
 Run: pytest tests/test_process.py -v
 """
+# NOTE: If kagglehub is not installed, run one of these in a Jupyter cell:
+#   !pip install kagglehub
+#   !pip3 install kagglehub
+#   import sys; !{sys.executable} -m pip install kagglehub
 
 import pytest
 import numpy as np
