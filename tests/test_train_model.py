@@ -1,5 +1,6 @@
 """
 test_train_model.py — Unit tests for src/train_model.py
+
 Run: pytest tests/test_train_model.py -v
 """
 
@@ -27,20 +28,27 @@ from src.train_model import (
 )
 
 
+# ============================================================
+# FIXTURES — Small synthetic data for testing
+# ============================================================
 @pytest.fixture
 def model_data():
     """Create small synthetic train/val/test data for model testing."""
     np.random.seed(42)
     n_features = 10
     feature_names = [f'feature_{i:02d}' for i in range(n_features)]
+
     def make_df(n_rows):
         X = pd.DataFrame(np.random.randn(n_rows, n_features), columns=feature_names)
         y = pd.Series(np.random.randn(n_rows), name='responder_6')
         w = pd.Series(np.random.uniform(0.5, 2.0, n_rows), name='weight')
         return X, y, w
+
+    # 1000 train, 200 val, 200 test — small enough to run in seconds
     X_train, y_train, w_train = make_df(1000)
     X_val, y_val, w_val = make_df(200)
     X_test, y_test, w_test = make_df(200)
+
     return {
         'X_train': X_train, 'y_train': y_train, 'w_train': w_train,
         'X_val': X_val, 'y_val': y_val, 'w_val': w_val,
@@ -49,18 +57,25 @@ def model_data():
     }
 
 
+# ============================================================
+# TESTS: Trivial Baseline
+# ============================================================
+# Verify trivial baseline trains and produces predictions with R^2 near 0
 def test_trivial(model_data):
-    """Verify trivial baseline trains and produces predictions."""
     train_mean, val_rmse, val_r2 = _train_trivial(
         model_data['y_train'], model_data['y_val'], model_data['w_val'])
     test_rmse, test_r2 = _eval_trivial(
         train_mean, model_data['y_test'], model_data['w_test'])
     assert isinstance(train_mean, float)
     assert test_rmse > 0
-    assert abs(val_r2) < 0.1
+    assert abs(val_r2) < 0.1  # predicting mean explains nothing
 
+
+# ============================================================
+# TESTS: Ridge Regression
+# ============================================================
+# Verify Ridge trains and produces correct number of predictions
 def test_ridge(model_data):
-    """Verify Ridge trains and produces predictions."""
     model, scaler, val_rmse, val_r2 = _train_ridge(
         model_data['X_train'], model_data['y_train'], model_data['w_train'],
         model_data['X_val'], model_data['y_val'], model_data['w_val'])
@@ -69,8 +84,13 @@ def test_ridge(model_data):
     assert len(preds) == len(model_data['y_test'])
     assert test_rmse > 0
 
+
+# ============================================================
+# TESTS: Random Forest
+# ============================================================
+# Verify Random Forest trains and produces correct number of predictions
+# Using small n_estimators for fast testing
 def test_random_forest(model_data):
-    """Verify Random Forest trains and produces predictions."""
     model, val_rmse, val_r2 = _train_rf(
         model_data['X_train'], model_data['y_train'], model_data['w_train'],
         model_data['X_val'], model_data['y_val'], model_data['w_val'],
@@ -80,8 +100,12 @@ def test_random_forest(model_data):
     assert len(preds) == len(model_data['y_test'])
     assert test_rmse > 0
 
+
+# ============================================================
+# TESTS: XGBoost Default
+# ============================================================
+# Verify XGBoost Default trains and produces correct number of predictions
 def test_xgboost_default(model_data):
-    """Verify XGBoost Default trains and produces predictions."""
     model, val_rmse, val_r2 = _train_xgb_default(
         model_data['X_train'], model_data['y_train'], model_data['w_train'],
         model_data['X_val'], model_data['y_val'], model_data['w_val'],
@@ -91,8 +115,12 @@ def test_xgboost_default(model_data):
     assert len(preds) == len(model_data['y_test'])
     assert test_rmse > 0
 
+
+# ============================================================
+# TESTS: XGBoost Tuned
+# ============================================================
+# Verify XGBoost Tuned trains with early stopping kicking in before max iterations
 def test_xgboost_tuned(model_data):
-    """Verify XGBoost Tuned trains with early stopping."""
     model, val_rmse, val_r2 = _train_xgb_tuned(
         model_data['X_train'], model_data['y_train'], model_data['w_train'],
         model_data['X_val'], model_data['y_val'], model_data['w_val'],
@@ -100,10 +128,15 @@ def test_xgboost_tuned(model_data):
     preds, test_rmse, test_r2 = _eval_xgb_tuned(
         model, model_data['X_test'], model_data['y_test'], model_data['w_test'])
     assert len(preds) == len(model_data['y_test'])
-    assert model.best_iteration < 500
+    assert model.best_iteration < 500  # early stopping should kick in
 
+
+# ============================================================
+# TESTS: Stacking Ensemble
+# ============================================================
+# Verify Stacking trains base models, blends via meta-model with 2 coefficients
 def test_stacking(model_data):
-    """Verify Stacking trains and produces predictions with 2 coefficients."""
+    # Train base models first
     ridge_model, ridge_scaler, _, _ = _train_ridge(
         model_data['X_train'], model_data['y_train'], model_data['w_train'],
         model_data['X_val'], model_data['y_val'], model_data['w_val'])
@@ -111,6 +144,8 @@ def test_stacking(model_data):
         model_data['X_train'], model_data['y_train'], model_data['w_train'],
         model_data['X_val'], model_data['y_val'], model_data['w_val'],
         n_estimators=50, max_depth=3, early_stopping_rounds=10)
+
+    # Train and test stacking
     meta_model, meta_scaler, val_rmse, val_r2 = _train_stacking(
         ridge_model, ridge_scaler, xgbt_model,
         model_data['X_train'], model_data['y_train'], model_data['w_train'],
@@ -119,10 +154,14 @@ def test_stacking(model_data):
         meta_model, meta_scaler, ridge_model, ridge_scaler, xgbt_model,
         model_data['X_test'], model_data['y_test'], model_data['w_test'])
     assert len(preds) == len(model_data['y_test'])
-    assert len(meta_model.coef_) == 2
+    assert len(meta_model.coef_) == 2  # one coefficient per base model
 
+
+# ============================================================
+# TESTS: Ablation Study
+# ============================================================
+# Verify ablation returns DataFrame with correct structure and number of rows
 def test_ablation(model_data):
-    """Verify ablation returns DataFrame with correct structure."""
     feature_groups = {
         'Group A': model_data['feature_names'][:5],
         'Group B': model_data['feature_names'],
@@ -132,5 +171,5 @@ def test_ablation(model_data):
         model_data['X_train'], model_data['y_train'], model_data['w_train'],
         model_data['X_val'], model_data['y_val'], model_data['w_val'],
         model_data['X_test'], model_data['y_test'], model_data['w_test'])
-    assert len(result) == 2
+    assert len(result) == 2  # two feature groups tested
     assert 'Test RMSE' in result.columns
