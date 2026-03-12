@@ -15,9 +15,10 @@ Predicting short-horizon trading returns (`responder_6`) using the Jane Street R
 ---
 
 ## Repository Structure
-
 ```
 project/
+├── reproduce_results.ipynb          Quick reproducibility test (loads saved models)
+│
 ├── config/                          Settings and hyperparameters
 │   ├── main.yaml                    Top-level paths and dataset info
 │   ├── model/                       One yaml per model
@@ -37,23 +38,27 @@ project/
 │
 ├── docs/                            Project documentation
 │
-├── models/                          Saved trained model files
+├── models/                          Saved trained model files (.pkl via joblib)
 │
 ├── notebooks/                       Jupyter notebooks
-│   └── capstone_finalVersion.ipynb  Complete end-to-end notebook
+│   ├── capstone_Group7.ipynb        Complete end-to-end notebook
+│   ├── test_process_notebook.ipynb  Interactive tests for process.py
+│   └── test_train_model_notebook.ipynb  Interactive tests for train_model.py
 │
 ├── src/                             Source code
 │   ├── __init__.py
 │   ├── process.py                   Data loading, cleaning, feature engineering
 │   └── train_model.py               Model training, testing, comparison, ablation
 │
-├── tests/                           Unit tests
+├── tests/                           Unit tests (run via pytest)
 │   ├── __init__.py
 │   ├── test_process.py              Tests for process.py
 │   └── test_train_model.py          Tests for train_model.py
 │
 ├── .gitignore
 ├── Makefile
+├── pytest.ini
+├── requirements.txt
 ├── README.md
 └── README.txt                       Submission run instructions
 ```
@@ -103,7 +108,7 @@ project/
 | Trivial (mean) | 0.7689 | -0.000 | — |
 | Ridge Regression | 0.3031 | 0.8446 | 60.6% |
 | Random Forest | 0.3020 | 0.8457 | 60.7% |
-| XGBoost (Default) | 0.2986 | 0.8491 | 61.2% |
+| XGBoost (Default) | 0.2986 | 0.8492 | 61.2% |
 | XGBoost (Tuned) | 0.2971 | 0.8507 | 61.4% |
 | Stacking Ensemble | 0.2964 | 0.8514 | 61.5% |
 
@@ -122,29 +127,23 @@ project/
 
 ## How to Run
 
-### Option 1: Jupyter Notebook (recommended)
+### Reproduce Results (recommended, takes seconds)
+Open `reproduce_results.ipynb` in the project root and run all cells.
+This loads saved models and test data, then reproduces all results instantly.
+No training or data download needed.
+
+### Full Pipeline from Scratch (~1.5 hours)
 ```bash
 # Open in Google Colab or Jupyter Notebook
-notebooks/capstone_finalVersion.ipynb
+notebooks/capstone_Group7.ipynb
 
 # Run all cells top to bottom
-# Full run on 4M rows: ~2 hours (Random Forest is slowest)
+# The notebook downloads the dataset automatically via kagglehub
+# Full run on 4M rows: ~1.5 hours (Random Forest is slowest)
 # Quick run: set sample_size = 500_000 (~15 min)
 ```
 
-### Option 2: Python Scripts
-```bash
-# Step 1: Install dependencies
-pip install numpy pandas pyarrow scikit-learn xgboost matplotlib seaborn statsmodels kagglehub pyyaml
-
-# Step 2: Process data
-python src/process.py
-
-# Step 3: Train models and evaluate
-python src/train_model.py
-```
-
-### Option 3: Using Makefile
+### Using Makefile
 ```bash
 make install    # Install dependencies
 make process    # Run data pipeline
@@ -156,15 +155,14 @@ make all        # Run everything
 ---
 
 ## Running Tests
-
 ```bash
-# Run all tests
+# Run all tests via pytest
 pytest tests/ -v
-
-# Run specific test file
-pytest tests/test_process.py -v
-pytest tests/test_train_model.py -v
 ```
+
+Or open the interactive test notebooks in `notebooks/`:
+- `test_process_notebook.ipynb` — tests data pipeline functions
+- `test_train_model_notebook.ipynb` — tests model functions
 
 Tests use small synthetic data (1000 rows) and run in seconds.
 
@@ -182,9 +180,10 @@ Tests use small synthetic data (1000 rows) and run in seconds.
 - seaborn
 - statsmodels
 - kagglehub
+- joblib
 - pyyaml
 - pytest (for testing)
-- joblib
+
 ---
 
 ## Key Findings
