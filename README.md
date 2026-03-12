@@ -76,7 +76,7 @@ project/
 
 ## Data Pipeline (`src/process.py`)
 
-1. **Load** — 4M row sample from Parquet via kagglehub
+1. **Load** - 4M row sample from Parquet via kagglehub
 2. **Clean** — drop 9 columns with >50% nulls, drop non-target responders, sort by symbol/date/time
 3. **Feature Engineering:**
    - 2 lag features (`responder_6_lag_1`, `responder_7_lag_1`)
@@ -132,7 +132,7 @@ Open `reproduce_results.ipynb` in the project root and run all cells.
 This loads saved models and test data, then reproduces all results instantly.
 No training or data download needed.
 
-### Full Pipeline from Scratch (~1.5 hours)
+### Full Pipeline from Scratch (1.5 hours)
 ```bash
 # Open in Google Colab or Jupyter Notebook
 notebooks/capstone_Group7.ipynb
